@@ -37,7 +37,7 @@ void pc_input_apply(void);
 /* Offer a window message to the input layer: keys, mouse buttons, the wheel
  * and focus changes. Never consumes anything; the window procedure goes on to
  * handle the message as it did. Call from the window's own thread. */
-#if defined(_WIN32)
+#if defined(_WIN32) && !DEFJAM_UWP
 void pc_input_window_message(HWND window, UINT msg, WPARAM wp, LPARAM lp);
 #else
 /* The same for a window that is not Win32's (src/host_posix.c): a key or
@@ -52,7 +52,7 @@ void pc_input_set_focus(int focused);
 
 /* The virtual-key code a key message is for, with Shift, Ctrl and Alt resolved to the
  * side that was pressed (VK_LSHIFT and so on). Used to learn a key for a binding. */
-#if defined(_WIN32)
+#if defined(_WIN32) && !DEFJAM_UWP
 int pc_input_vk_from_message(WPARAM wp, LPARAM lp);
 #endif
 

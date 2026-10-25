@@ -735,7 +735,8 @@ static long long copy_tail(const char *src, const char *dst, long long bytes, in
     return start;
 }
 
-#if defined(_WIN32)
+/* An app cannot load dbghelp, so the One S build writes no minidump. */
+#if defined(_WIN32) && !DEFJAM_UWP
 typedef BOOL (WINAPI *MiniDumpFn)(HANDLE, DWORD, HANDLE, int, void *, void *, void *);
 typedef struct { DWORD ThreadId; PEXCEPTION_POINTERS ExceptionPointers; BOOL ClientPointers; } RecMinidumpException;
 static int write_minidump(const char *path, void *exception_pointers)
@@ -889,7 +890,7 @@ static void write_bundle(const char *reason, double t_mark, unsigned long long f
                                      (long long)(g_cfg.ring_seconds + g_cfg.after_seconds + 1) * 192000LL, 4);
 
         if (crash) {
-#if defined(_WIN32)
+#if defined(_WIN32) && !DEFJAM_UWP
             if (path_join(path, sizeof path, dir, "process.dmp")) write_minidump(path, os_exception);
 #else
             (void)os_exception;

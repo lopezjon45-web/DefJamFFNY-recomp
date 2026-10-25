@@ -277,7 +277,7 @@ static void key_event(int vk, int down)
     xbox_HostInputKey(vk, down);
 }
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !DEFJAM_UWP
 
 /* Shift, Ctrl and Alt arrive as one virtual key for both sides; the scan code
  * and the extended bit say which. Report the side and the generic key, which
@@ -349,7 +349,7 @@ void pc_input_set_focus(int focused)
     if (!focused) release_everything();
 }
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !DEFJAM_UWP
 
 void pc_input_window_message(HWND window, UINT msg, WPARAM wp, LPARAM lp)
 {

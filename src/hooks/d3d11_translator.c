@@ -44,6 +44,9 @@
 #include "recomp_settings.h"
 #include "recorder.h"
 #include "d3d8_readback.h"
+#if DEFJAM_UWP
+#include "xbox/xbox_shell.h"
+#endif
 
 /* The title sets a 640x480 mode. Matching it keeps the translator's screen
  * space and ours the same, so a vertex the title placed at 320,240 lands in
@@ -58,7 +61,13 @@ static int   s_ready;
 void d3d11_translator_pump(void);
 void d3d11_translator_report(void);
 
-#if defined(_WIN32)
+#if DEFJAM_UWP
+
+/* The shell owns the window, a full-screen CoreWindow, and its thread; the
+ * toolkit takes the device from the shell (xbox/xbox_shell.h). */
+static int s_fullscreen = 1;
+
+#elif defined(_WIN32)
 
 static HWND  s_window;
 
@@ -389,7 +398,9 @@ int d3d11_translator_init(void)
     if (!getenv("RECOMP_PB_D3D11"))
         return 0;
 
-#if defined(_WIN32)
+#if DEFJAM_UWP
+    /* The shell's window exists before its game thread starts. */
+#elif defined(_WIN32)
     s_window_ready = CreateEventW(NULL, TRUE, FALSE, NULL);
     {
         HANDLE th = s_window_ready ? CreateThread(NULL, 0, window_thread, NULL, 0, NULL) : NULL;
@@ -426,14 +437,14 @@ int d3d11_translator_init(void)
     pp.BackBufferFormat       = D3DFMT_A8R8G8B8;
     pp.BackBufferCount        = 1;
     pp.SwapEffect             = D3DSWAPEFFECT_DISCARD;
-#if defined(_WIN32)
+#if defined(_WIN32) && !DEFJAM_UWP
     pp.hDeviceWindow          = s_window;
 #endif
     pp.Windowed               = TRUE;
     pp.EnableAutoDepthStencil = FALSE;
 
     hr = d3d->lpVtbl->CreateDevice(d3d, 0, 1 /* HAL */,
-#if defined(_WIN32)
+#if defined(_WIN32) && !DEFJAM_UWP
                                    s_window,
 #else
                                    NULL,
@@ -569,6 +580,9 @@ static void recorder_frame_done(double present_ms, double capture_ms)
  * hertz, as the presenter reads it: a 59.94 Hz mode reads 59. */
 static unsigned window_refresh_hz(void)
 {
+#if DEFJAM_UWP
+    return xbox_shell_display_hz();
+#else
     MONITORINFOEXW mi;
     DEVMODEW mode;
     if (!s_window)
@@ -581,6 +595,7 @@ static unsigned window_refresh_hz(void)
         !EnumDisplaySettingsW(mi.szDevice, ENUM_CURRENT_SETTINGS, &mode))
         return 0;
     return (unsigned)mode.dmDisplayFrequency;
+#endif
 }
 
 /* One log line when the display's refresh rate, the window mode or who paces
