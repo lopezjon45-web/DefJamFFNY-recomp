@@ -52,10 +52,25 @@ endif()
 # and builds it statically, so configuring needs network access once. Turn it
 # off to read pads through XInput only.
 option(DEFJAM_SDL3 "Read gamepads through SDL3" ON)
+
+# The Xbox One S app partition (Dev Mode). This tree then builds only the
+# host and game libraries (cmake/defjam_uwp.cmake); the defjam-one-s shell
+# owns the window, the device, the pads, the entry point and the link.
+option(DEFJAM_UWP "Build the host and game libraries for the Xbox One S app partition" OFF)
+if(DEFJAM_UWP)
+    # SDL3 has no app-partition build; the shell reads the pads.
+    set(DEFJAM_SDL3 OFF CACHE BOOL "" FORCE)
+    set(XBOXRECOMP_UWP ON CACHE BOOL "" FORCE)
+endif()
 set(XBOXRECOMP_SDL3 ${DEFJAM_SDL3} CACHE BOOL "Read gamepads through SDL3 (fetched and built statically)" FORCE)
 
 # Builds all runtime libraries and provides the 'xboxrecomp' umbrella target.
 add_subdirectory(${XBOXRECOMP_DIR} ${CMAKE_BINARY_DIR}/xboxrecomp)
+
+if(DEFJAM_UWP)
+    include(cmake/defjam_uwp.cmake)
+    return()
+endif()
 
 # ── Game executable (only when lifted code is present) ──────────────────
 file(GLOB RECOMP_GEN_SOURCES CONFIGURE_DEPENDS "src/recomp/gen/*.c")

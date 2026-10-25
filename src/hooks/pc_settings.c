@@ -440,7 +440,9 @@ extern int pc_mods_needs_recovery(void);
 
 static void run_launcher_if_wanted(void)
 {
-#if defined(_WIN32)
+#if DEFJAM_UWP
+    /* No launcher on the Xbox One S; settings.ini is the way to change things. */
+#elif defined(_WIN32)
     const char *settings = getenv("RECOMP_SETTINGS");
     const char *cmd = GetCommandLineA();
     int test_run = (settings && !_stricmp(settings, "none")) ||
@@ -585,7 +587,9 @@ int pc_settings_init(void)
 
     d3d8_present_enable_scaling(1);
     ws_init(pc_display("window_width", 1280), pc_display("window_height", 960), pc_display("fullscreen", 0));
-#if defined(_WIN32)
+#if DEFJAM_UWP
+    /* No overlay on the Xbox One S. */
+#elif defined(_WIN32)
     d3d8_present_set_overlay(pc_ui_overlay, NULL);
 #else
     pc_ui_register_overlay();
