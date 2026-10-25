@@ -37,7 +37,9 @@
 #endif
 
 #include "host.h"
-#if defined(_WIN32)
+#if DEFJAM_UWP
+#include "xbox/xbox_shell.h"
+#elif defined(_WIN32)
 #include <dbghelp.h>
 #else
 #include <dlfcn.h>
@@ -189,7 +191,23 @@ void d3d11_translator_frame_end(void);
  */
 static void print_guest_context(void *rip)
 {
-#if defined(_WIN32)
+#if DEFJAM_UWP
+    /* An app has no dbghelp. The offset into the image names the function
+     * through the link map on the machine that linked it. */
+    extern IMAGE_DOS_HEADER __ImageBase;
+    const IMAGE_NT_HEADERS *nt =
+        (const IMAGE_NT_HEADERS *)((const char *)&__ImageBase + __ImageBase.e_lfanew);
+    uintptr_t rva = (uintptr_t)rip - (uintptr_t)&__ImageBase;
+    char image[MAX_PATH];
+    const char *name = "image";
+
+    if (GetModuleFileNameA(NULL, image, sizeof(image)))
+        name = strrchr(image, '\\') ? strrchr(image, '\\') + 1 : image;
+    if (rva < nt->OptionalHeader.SizeOfImage)
+        fprintf(stderr, "  rip=%s+0x%llX\n", name, (unsigned long long)rva);
+    else
+        fprintf(stderr, "  rip=0x%llX, outside %s\n", (unsigned long long)(uintptr_t)rip, name);
+#elif defined(_WIN32)
     /* SYMBOL_INFO is variable-length: the name is written past the struct, so
      * it must be over-allocated with MaxNameLen set to the slack. */
     char buf[sizeof(SYMBOL_INFO) + 256];
@@ -378,7 +396,9 @@ static void recomp_selftest(void)
 
 void host_fatal(const char *message)
 {
-#if defined(_WIN32)
+#if DEFJAM_UWP
+    xbox_shell_fatal(message);
+#elif defined(_WIN32)
     MessageBoxA(NULL, message, "Def Jam: Fight for NY", MB_ICONERROR);
 #else
     fprintf(stderr, "Def Jam: Fight for NY: %s\n", message);
@@ -578,7 +598,11 @@ static void install_fault_handler(void)
 
 /* ── Entry ─────────────────────────────────────────────────── */
 
-#if defined(_WIN32)
+#if DEFJAM_UWP
+/* The shell calls this on its game thread once the device, the data and the
+ * current directory are ready (xbox/xbox_shell.h). */
+int xbox_shell_app_main(void)
+#elif defined(_WIN32)
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
                    LPSTR lpCmdLine, int nCmdShow)
 #else
@@ -588,7 +612,7 @@ static int host_main(void)
     void *xbe_data = NULL;
     size_t xbe_size = 0;
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !DEFJAM_UWP
     (void)hInstance;
     (void)hPrevInstance;
     (void)lpCmdLine;
@@ -622,8 +646,10 @@ static int host_main(void)
      * time the process is already in a bad way, and SymInitialize
      * allocates. Failure is not fatal -- the handler prints no name. */
 #if defined(_WIN32)
+#if !DEFJAM_UWP
     SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
     SymInitialize(GetCurrentProcess(), NULL, TRUE);
+#endif
     AddVectoredExceptionHandler(1, veh_handler);
 #else
     install_fault_handler();
@@ -901,6 +927,7 @@ static BOOL load_xbe(const char *path, void **out_data, size_t *out_size)
     return TRUE;
 }
 
+#if !DEFJAM_UWP
 /* Console entry point (for debugging -- lets you see printf output) */
 int main(int argc, char **argv)
 {
@@ -917,3 +944,4 @@ int main(int argc, char **argv)
     }
 #endif
 }
+#endif
