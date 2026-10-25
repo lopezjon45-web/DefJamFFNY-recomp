@@ -65,7 +65,11 @@ float ws_init(int window_w, int window_h, int fullscreen)
              * window gave a 1.53 canvas with bars on his 16:9 monitor. */
             int w = window_w, h = window_h;
             (void)fullscreen;
-#if defined(_WIN32)
+#if DEFJAM_UWP
+            /* Every HDMI mode the console outputs is 16:9. */
+            w = 16;
+            h = 9;
+#elif defined(_WIN32)
             {
                 int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
                 if (sw > 0 && sh > 0) {
