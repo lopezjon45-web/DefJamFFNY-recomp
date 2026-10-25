@@ -40,9 +40,12 @@ set(_defjam_includes
     ${XBOXRECOMP_DIR}/src/d3d
     ${XBOXRECOMP_DIR}/src/nv2a)
 set(_defjam_defs
-    WIN32_LEAN_AND_MEAN NOMINMAX DEFJAM_UWP=1
+    WIN32_LEAN_AND_MEAN NOMINMAX DEFJAM_UWP=1 XBOXRECOMP_UWP=1
     DEFJAM_VERSION=\"${PROJECT_VERSION}\"
     DEFJAM_MOD_SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
+# The names the partition's headers hide, declared for every file whichever
+# header gives it <windows.h> (recorder.c and pc_mods.cpp take it directly).
+set(_defjam_options "/FI${XBOXRECOMP_DIR}/src/platform/app_partition.h")
 file(READ "${XBOXRECOMP_DIR}/src/nv2a/texture_pack.c" _mod_texture_loader)
 string(FIND "${_mod_texture_loader}" "texture_pack_wide_slabs" _mod_has_wide)
 if(NOT _mod_has_wide EQUAL -1)
@@ -58,6 +61,7 @@ add_library(defjam_host STATIC
 set_target_properties(defjam_host PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 target_include_directories(defjam_host PRIVATE ${_defjam_includes})
 target_compile_definitions(defjam_host PRIVATE ${_defjam_defs})
+target_compile_options(defjam_host PRIVATE ${_defjam_options})
 target_link_libraries(defjam_host PUBLIC xboxrecomp recomp_settings)
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/recomp/gen/recomp_dispatch.c")
@@ -66,7 +70,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/recomp/gen/recomp_dispatch.c")
     target_compile_definitions(defjam_game PRIVATE ${_defjam_defs})
     # The lifted code reads memory through casts of every width, relies on
     # wrapping arithmetic, and must not have a multiply and an add fused.
-    target_compile_options(defjam_game PRIVATE /bigobj
+    target_compile_options(defjam_game PRIVATE ${_defjam_options} /bigobj
         /clang:-fwrapv /clang:-fno-strict-aliasing /clang:-ffp-contract=off)
     target_link_libraries(defjam_game PUBLIC defjam_host)
 endif()
